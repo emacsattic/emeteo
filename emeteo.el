@@ -1,7 +1,7 @@
 ;; emeteo.el --- An Emacs Interface To Meteorological Data
 
 ;; $Id$
-;; Author: Sebastian Freundt (freundt@users.sf.net)
+;; Author: Sebastian Freundt (hroptatyr@gna.org)
 ;; Keywords: metar, meteo, weather, emacs
 
 ;; Copyright (C) 2004  Sebastian Freundt
@@ -28,21 +28,35 @@
 ;; * http://sf.net/projects/emeteo/
 ;; * http://gna.org/projects/emeteo/
 
+
 ;; Installation:
 
 ;; Put emeteo.el in your load-path, and put (require 'emeteo) in your .emacs.
 ;; To optionally use the modeline feature, try (require 'emeteo-modeline) and
 ;; M-x emeteo RET :)
 
+
 ;; Configuration:
 
 ;; Use M-x customize-group RET emeteo RET to get an overview
 ;; of all the variables you can tweak.
 
+
 ;; Usage:
-;;
+;; Within emacs-lisp you would probably want to invoke something like:
+;;   (emeteo-fetch 'berlin)
+;; or any other spec from `emeteo-data-sources'
+;; The return value will be of the form
+;;   (berlin ((temp "10.0°")))
+;; or something, a list with the specname in the car and an alist in the cdr
+;; BEWARE: the return value syntax might change during the alpha status.
+
 
 ;;; Changelog:
+;; 2004/05/24:
+;; - new sources variable `emeteo-data-sources'
+;;   this is the main configuration source of emeteo
+;;   BEWARE this variable will have various syntax changes in the near future
 ;; 2004/04/17:
 ;; - the main hook fun is now (emeteo-fetch)
 ;; - emeteo-fetch is called by composing `emeteo-fetch-chain'
@@ -57,7 +71,7 @@
 (require 'emeteo-parse)
 
 
-(defconst emeteo-version-number "V0.2 $Revision$"
+(defconst emeteo-version-number "V0.3 $Revision$"
   "Version number.")
 (defconst emeteo-version
   (format "emacs meteorological package %s"
@@ -75,12 +89,27 @@ This defines how long to wait for the response of data requests."
   :group 'emeteo)
 
 
-(defcustom emeteo-data-sources nil
+(defcustom emeteo-data-sources
+  '(
+    (berlin :region-path '(europe germany berlin)
+            :uri "http://www.met.fu-berlin.de/de/wetter/"
+            :fallback '("http://weather.yahoo.com/forecast/GMXX0007.html")
+            :fetch-chain 'default
+            :converter-chain 'celsius
+            :name "Berlin"
+            :shortname "B"
+            )
+    )
   "Data source specifier list.
 This defines how and where to fetch data.
 
-It is a list of the form:
-"
+It is a list of entries of the form:
+
+\(data-identifier
+  :region-path '(continent country city)
+  :url \"http://whatever\"
+  :fallback '(\"URIs\" \"to\" \"fallback\")
+\)"
   :group 'emeteo)
 
 ;;; this will move to emeteo-stations soon
@@ -133,7 +162,7 @@ The first function is given the params from the calling function."
   (let* ((debug-buf (and emeteo-debug-p
                          (get-buffer-create "*emeteo debug*")))
          (specs-list (or specs-list
-                         emeteo-url-alist)))
+                         emeteo-data-sources)))
     (and emeteo-debug-p
          (erase-buffer debug-buf))
     (mapcar 'emeteo-fetch (mapcar 'car specs-list))))
@@ -142,13 +171,14 @@ The first function is given the params from the calling function."
 (defun emeteo-fetch (&optional emeteo-spec specs-list)
   "Fetches metar information in the region `emeteo-spec'"
   (let* ((specs-list (or specs-list
-                         emeteo-url-alist))
-         (uri (or (car (cdr-safe (assoc emeteo-spec specs-list)))))
+                         emeteo-data-sources))
+         (spec (assoc emeteo-spec specs-list))
+         (uri (emeteo-utils-find-key-val ':uri spec))
          (debug-buf (and emeteo-debug-p
                          (get-buffer-create "*emeteo debug*"))))
     (and uri
          (cons emeteo-spec (emeteo-fetch-uri uri)))))
-;;(emeteo-fetch "B")
+;;(emeteo-fetch 'berlin)
 
 
 

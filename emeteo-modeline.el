@@ -44,8 +44,22 @@
   :group 'emeteo-modeline
   :type 'integer)
 
+(defcustom emeteo-modeline-default-specname-keyword ':shortname
+  "Keyword from `emeteo-data-sources' to be used when
+displaying as announcement for a particular spec."
+  :group 'emeteo-modeline
+  :type 'sexp)
+
+(defcustom emeteo-modeline-default-fail-indicator-string '"n/a"
+  "String used as an indicator in the modeline to
+announce that fetching has failed."
+  :group 'emeteo-modeline
+  :type 'string)
+
+
 (defvar emeteo-modeline-timer nil)
 (defvar emeteo-modeline-string nil)
+
 
 
 ;;;###autoload
@@ -89,17 +103,24 @@ Updates automatically every minute."
 
 (defun emeteo-modeline-function ()
   (let* ((metinfo (emeteo-fetch-all)))
-    (setq emeteo-modeline-string
-          (concat " "
-                  (mapconcat (lambda (metspec)
-                               (let* ((temp (cdr-safe (assoc 'temp (cdr-safe metspec))))
-                                      (region (car-safe metspec)))
-                                 (concat region
-                                         ":"
-                                         (or (car-safe temp)
-                                             temp
-                                             "n/a"))))
-                             metinfo " ")))
+    (setq
+     emeteo-modeline-string
+     (concat
+      " "
+      (mapconcat
+       (lambda (metspec)
+         (let* ((temp (cdr-safe (assoc 'temp (cdr-safe metspec))))
+                (specname (car-safe metspec))
+                (spec (assoc specname emeteo-data-sources))
+                (shortname (emeteo-utils-find-key-val
+                            (or emeteo-modeline-default-specname-keyword ':shortname) spec))
+                (failindicator (or emeteo-modeline-default-fail-indicator-string "n/a")))
+           (concat shortname
+                   ":"
+                   (or (car-safe temp)
+                       temp
+                       failindicator))))
+       metinfo " ")))
     ;; This is inside the let binding, but we are not going to document
     ;; what variables are available.
     (run-hooks 'emeteo-modeline-hook)

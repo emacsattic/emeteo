@@ -43,7 +43,7 @@
 
 
 (defcustom emeteo-temperature-units
-  '(("&deg;?" "&ordm;?" "°")
+  '(("&deg;?" "&#176;" "&ordm;?" "°")
     ("C" "F"))
   "This is a list of lists of possible temperature units.
 Elements of different lists are combined specially
