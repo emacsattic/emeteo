@@ -46,13 +46,32 @@
 ;; Within emacs-lisp you would probably want to invoke something like:
 ;;   (emeteo-fetch 'berlin)
 ;; or any other spec from `emeteo-data-sources'
+;;
 ;; The return value will be of the form
 ;;   (berlin ((temp "10.0°")))
 ;; or something, a list with the specname in the car and an alist in the cdr
+;;
 ;; BEWARE: the return value syntax might change during the alpha status.
+;;
+;;
+;; The variable `emeteo-data-sources' is chunk-driven. This means you may add everything
+;; you want as long as the list itself is of the form
+;;   (data-identifier data)
+;; _and_ data is entirely of the form :keyword value.
+;; There is no predefined set of supported or necessary keywords. Everything that use this
+;; variable has to make sure itself to not produce unexpected results due to missing 
+;; keywords.
+;;
+;; On the other hand, most of the provided functionality lets you customize which keywords
+;; to use for which purposes.
+;;
+;;
+;; This project is just to demonstrate my definition of usability! >8) <- hroptatyr
 
 
 ;;; Changelog:
+;; 2004/05/29:
+;; - `emeteo-data-sources' is declared a flexible chunk-driven variable from now on.
 ;; 2004/05/24:
 ;; - new sources variable `emeteo-data-sources'
 ;;   this is the main configuration source of emeteo
@@ -93,9 +112,12 @@ This defines how long to wait for the response of data requests."
   '(
     (berlin :region-path '(europe germany berlin)
             :uri "http://www.met.fu-berlin.de/de/wetter/"
+            :uri-coordinates ((52 25) (13 13))
             :fallback '("http://weather.yahoo.com/forecast/GMXX0007.html")
             :fetch-chain 'default
             :converter-chain 'celsius
+            :unit 'celsius
+            :unit-string "°C"
             :name "Berlin"
             :shortname "B"
             )
@@ -105,13 +127,30 @@ This defines how and where to fetch data.
 
 It is a list of entries of the form:
 
-\(data-identifier
-  :region-path '(continent country city)
-  :url \"http://whatever\"
-  :fallback '(\"URIs\" \"to\" \"fallback\")
-\)"
+  \(data-identifier data\)
+
+In turn data looks like a bunch of
+
+  :keyword value
+
+pairs.
+
+This variable is chunk-driven. This means you may add everything
+you want.
+There is no predefined set of supported or necessary keywords.
+
+On the other hand, most of the provided functionality within this 
+repository lets you customize which keywords to use for which purposes."
   :group 'emeteo)
 
+
+(defcustom emeteo-default-spec-identifier 'berlin
+  ""
+  :group 'emeteo)
+
+
+
+;;;; OLD STUFF BEGINS HERE
 ;;; this will move to emeteo-stations soon
 (defcustom emeteo-url-alist
   '(
@@ -121,6 +160,8 @@ It is a list of entries of the form:
     )
   "old stuff ... soon to become obsolete."
   :group 'emeteo)
+;;;; OLD STUFF ENDS HERE
+
 
 
 (defcustom emeteo-fetch-chain
@@ -159,6 +200,8 @@ The first function is given the params from the calling function."
 ;;; fetching
 
 (defun emeteo-fetch-all (&optional specs-list)
+  "Fetches metar information of all identifiers in `specs-list'
+If optional `specs-list' is omitted `emeteo-data-sources' is used."
   (let* ((debug-buf (and emeteo-debug-p
                          (get-buffer-create "*emeteo debug*")))
          (specs-list (or specs-list
@@ -166,6 +209,14 @@ The first function is given the params from the calling function."
     (and emeteo-debug-p
          (erase-buffer debug-buf))
     (mapcar 'emeteo-fetch (mapcar 'car specs-list))))
+
+(defun emeteo-fetch-random (&optional specs-list)
+  (let* ((debug-buf (and emeteo-debug-p
+                         (get-buffer-create "*emeteo debug*")))
+         (specs-list (or specs-list
+                         emeteo-data-sources)))
+    (and emeteo-debug-p)
+    (emeteo-fetch (emeteo-utils-random-choose (mapcar 'car specs-list)))))
 
 
 (defun emeteo-fetch (&optional emeteo-spec specs-list)

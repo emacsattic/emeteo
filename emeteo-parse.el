@@ -171,9 +171,10 @@ This defun currently gives position in list as score. :o"
     (cons 'temp
           (mapcar (lambda (dat)
                     (cons (incf init-score)
-                          (format "%s%s"
+                          (format "%s"
                                   (emeteo-utils-find-key-val ':temp dat)
-                                  (emeteo-utils-find-key-val ':unit dat))))
+                                  ;;(emeteo-utils-find-key-val ':unit dat)
+                                  )))
                   temp-data))))
 ;;(emeteo-frob-uri "http://www.math.tu-berlin.de/~freundt/emeteo-test.html")
 ;;(setq test (emeteo-parse-buffer (get-buffer "*emeteo*")))

@@ -21,10 +21,9 @@
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; Commentary:
-;;
+;; * these are entirely auxiliary defuns
 
 ;; For more information, see the following URLs:
-;; * http://sf.net/projects/emeteo/
 ;; * http://gna.org/projects/emeteo/
 
 ;;; History:
@@ -88,7 +87,12 @@ of SETS."
  
 (defun emeteo-utils-find-key-val (keyword list)
   "Finds KEYWORD in list and returns its value"
-  (let ((keypos (position keyword list)))
+  (let* ((keyw (cond ((keywordp keyword)
+                      keyword)
+                     ((symbolp keyword)
+                      (intern (format ":%s" keyword)))
+                     (t nil)))
+         (keypos (position keyw list)))
     (and keypos
          (nth (1+ keypos) list))))
 
@@ -100,6 +104,12 @@ should be the param given to the function before the last."
        (or (and (car-safe chain)
                 (cons (car chain) (list (emeteo-utils-composition-chain (cdr-safe chain)))))
            chain)))
+
+
+(defun emeteo-utils-random-choose (list)
+  "Chooses one element of list randomly and returns it."
+  (nth (random (length list)) list))
+;;(emeteo-utils-random-choose '(beer wine wodka whisky))
 
 (provide 'emeteo-utils)
 
