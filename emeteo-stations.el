@@ -36,6 +36,9 @@
   :group 'emeteo
   :prefix "emeteo-stations-")
 
+(defcustom emeteo-stations-lala t
+  "ksjfa"
+  :group 'emeteo-stations)
 
 ;; station identifiers
 
@@ -14227,7 +14230,7 @@
                  (let* ((icao (aref icaowmo 0))
                         (wmo (aref icaowmo 1))
                         (country (aref icaowmo 2))
-                        (oldhash (gethash country emeteo-stations-country-ht)))
+                        (oldhash (gethash country emeteo-stations-countries-ht)))
                    (puthash country (append (list (vector icao wmo)) oldhash) emeteo-stations-countries-ht)))
                emeteo-stations-icao-wmo)
     emeteo-stations-countries-ht)
@@ -14268,7 +14271,9 @@
     emeteo-stations-wmo-ht))
 
 
-(defun lala ()
+(defun emeteo-stations-browse-by-region ()
+  "Browses stations by specifying country and city.
+Returns a station."
   (let* ((country
           (completing-read
            "Country: "
@@ -14293,10 +14298,25 @@
              cities))))
     (gethash city emeteo-stations-cities-ht)))
 
-(defun emeteo-stations-generate-data-source (station)
+(defun emeteo-stations-select (by-method)
   ""
-  )
+  (let ((station
+         (funcall (intern (format "emeteo-stations-%s-%s" "browse" by-method)))))
+    (emeteo-stations-generate-data-source-1 station)))
+;;(emeteo-stations-select 'by-region)
 
+
+(defun emeteo-stations-generate-data-source-1 (station)
+  ""
+  (and station 
+       (let ((metar (aref station 0))
+             (wmo (aref station 1)))
+         (and metar
+              (format "%s/%s/%s.TXT"
+                      emeteo-method-noaa-url
+                      emeteo-method-noaa-dir
+                      metar)))))
+  
 
 (provide 'emeteo-stations)
 

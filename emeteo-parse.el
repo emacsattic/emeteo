@@ -31,6 +31,13 @@
 (require 'emeteo-utils)
 
 
+(defconst emeteo-parse-prefix "emeteo-parse-"
+  "Prefix of emeteo-parse.el")
+(defgroup emeteo-parse nil
+  "Emeteo parsers."
+  :group 'emeteo
+  :prefix emeteo-parse-prefix)
+
 
 (defcustom emeteo-temperature-units
   '(("&deg;?" "&#176;" "&ordm;?" "°")
@@ -92,7 +99,7 @@ at the same time."
 
 (defcustom emeteo-parse-hook
   '(
-    emeteo-parse-temperature
+    emeteo-parse-temp
     emeteo-parse-wind
     ;;emeteo-parse-pressure
     ;;emeteo-parse-sight
@@ -158,36 +165,61 @@ There are several predefined decision-functions:
 
 
 ;;;; Now Code
-;;; temperature parsing
 
-(defun emeteo-parse-temperature (buffer &optional emeteo-spec)
-  "Parses BUFFER for occurences of a current temperature.
+
+(defmacro emeteo-parse-define-parser (name &rest parser-specs)
+  "Defines an emeteo raw data parser.
+A parser consists of NAME which defines a defun emeteo-parse-`NAME'
+and some specs to control the parsing process."
+  (let* ((pfunn (intern (format "%s%s" emeteo-parse-prefix name)))
+         (units (emeteo-utils-eval-val
+                 (emeteo-utils-find-key-val ':units parser-specs)))
+         (istrs (emeteo-utils-eval-val
+                 (emeteo-utils-find-key-val ':istrs parser-specs))))
+    `(defun ,pfunn (buffer &optional emeteo-spec)
+      ,(format "Parses BUFFER for occurences of %s.
 Optional EMETEO-SPEC is ignored at the moment.
 
 Returns a cons cell '\(temp suspects) where 'temp is the
-emeteo parse identifier and suspects are temperature/unit pairs.
+emeteo parse identifier and suspects are temperature/unit pairs."
+               name)
+      (let* ((punits (mapconcat 'identity
+                                (emeteo-utils-product-set ',units 'concat)
+                                "\\|"))
+             (pintrs (mapconcat 'identity
+                                (emeteo-utils-product-set ',istrs 'concat)
+                                "\\|"))
+             (prexps (format "\\(?:%s\\):?\\s-+\\([0-9.,]+\\)\\s-*\\(%s\\)"
+                             pintrs
+                             punits))
+             (result))
+        (with-current-buffer buffer
+          (save-excursion
+            (goto-char (point-min))
+            (while (re-search-forward prexps nil t)
+              (add-to-list 'result
+                           (list ':temp (match-string 1)
+                                 ':unit (match-string 2)
+                                 ':match (match-string 0))))))
+        (cons ',name result)))))
 
-THIS NEEDS TO BE MORE ABSTRACTED."
-  (let* ((tempunits (mapconcat 'identity
-                               (emeteo-utils-product-set emeteo-temperature-units 'concat)
-                               "\\|"))
-         (tempintr (mapconcat 'identity
-                              (emeteo-utils-product-set emeteo-temperature-introductory-strings 'concat)
-                              "\\|"))
-         (temprexp (format "\\(?:%s\\):?\\s-+\\([0-9.,]+\\)\\s-*\\(%s\\)"
-                           tempintr
-                           tempunits))
-         (result))
-    (with-current-buffer buffer
-      (save-excursion
-        (goto-char (point-min))
-        (while (re-search-forward temprexp nil t)
-          (add-to-list 'result `(:temp ,(match-string 1)
-                                 :unit ,(match-string 2)
-                                 :match ,(match-string 0))))))
-    (cons 'temp result)))
-;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
-;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
+
+;;; some predefined parsers
+
+(emeteo-parse-define-parser
+ temp
+ :units emeteo-temperature-units
+ :istrs emeteo-temperature-introductory-strings)
+(emeteo-parse-define-parser
+ wind
+ :units emeteo-wind-units
+ :istrs emeteo-wind-introductory-strings)
+
+
+
+
+
+;;; temperature parsing
 
 (defun emeteo-valuate-temperature (parse-data &optional temperature-format)
   "Valuates a list of given temperatures.
@@ -208,35 +240,6 @@ This defun currently gives position in list as score. :o."
 
 
 ;;; wind parsing
-
-(defun emeteo-parse-wind (buffer &optional emeteo-spec)
-  "Parses BUFFER for occurences of a current wind spec.
-Optional EMETEO-SPEC is ignored at the moment.
-
-Returns a cons cell '\(wind suspects) where 'wind is the
-emeteo parse identifier and suspects are wind/unit pairs.
-
-THIS NEEDS TO BE MORE ABSTRACTED."
-  (let* ((windunits (mapconcat 'identity
-                               (emeteo-utils-product-set emeteo-wind-units 'concat)
-                               "\\|"))
-         (windintr (mapconcat 'identity
-                              (emeteo-utils-product-set emeteo-wind-introductory-strings 'concat)
-                              "\\|"))
-         (windrexp (format "\\(?:%s\\):?\\s-+\\([0-9.,]+\\)\\s-*\\(%s\\)"
-                           windintr
-                           windunits))
-         (result))
-    (with-current-buffer buffer
-      (save-excursion
-        (goto-char (point-min))
-        (while (re-search-forward windrexp nil t)
-          (add-to-list 'result `(:wind ,(match-string 1)
-                                 :unit ,(match-string 2)
-                                 :match ,(match-string 0))))))
-    (cons 'wind result)))
-;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
-;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
 
 (defun emeteo-valuate-wind (parse-data &optional wind-format)
   "Valuates a list of given wind data.
@@ -397,37 +400,53 @@ on SCORE-DATA-ALIST"
 
 
 ;;; this is the next to get into the abstraction process: Wash Modules
-(defun emeteo-wash (buffer)
-  (when buffer
-  (with-current-buffer buffer
-    (goto-char (point-min))
-    (while (search-forward (concat (char-to-string 13)) nil t)
-        (replace-match ""))
 
-    ;;(encode-coding-region (point-min) (point-max))
+(defmacro emeteo-parse-define-wash (name &rest wash-specs)
+  "Defines a wash module to be used for preprocessing the buffer
+returned by some fetch functions.
+A wash module consists of NAME which defines a defun emeteo-wash-`NAME'
+and some specs to control the washing process.
 
-    (goto-char (point-min))
-    (while (re-search-forward "[ \t\n]+" nil t)
-      (replace-match "  "))
+Basically a wash module is a set of (rexp . replacement) pairs.
 
-    (goto-char (point-min))
-    (while (re-search-forward "&nbsp;" nil t)
-      (replace-match " "))
+Supported keywords for WASH-SPECS
 
-    (goto-char (point-min))
-    (while (re-search-forward "<.+?>" nil t)
-      (replace-match " "))
+:replace -- list of \(rexp . replacement\) pairs."
+  (let ((wfunn (intern (format "emeteo-wash-%s" name)))
+        (wrepl (emeteo-utils-eval-val
+                (emeteo-utils-find-key-val ':replace wash-specs))))
+    `(defun ,wfunn (buffer)
+      (when buffer
+        (with-current-buffer buffer
+          (mapc (lambda (rexprepl)
+                  (let ((rexp (emeteo-utils-eval-val (car rexprepl) 'stringp))
+                        (repl (emeteo-utils-eval-val (cdr rexprepl) 'stringp)))
+                    (goto-char (point-min))
+                    (while (re-search-forward rexp nil t)
+                      (replace-match repl))))
+                ,wrepl))
+        buffer))))
 
-    (goto-char (point-min))
-    (while (re-search-forward "\\s-\\s-+" nil t)
-      (replace-match "   ")))
-  buffer))
+;; some predefined wash modules
+
+(emeteo-parse-define-wash
+ html
+ :replace '(((char-to-string 13) . "")
+            ("[ \t\n]+" . "  ")
+            ("&nbsp;?" . " ")
+            ("<.+?>" . " ")
+            ("\\s-\\s-+" . "   ")))
+;;(symbol-function 'emeteo-wash-html)
+
+
 
 
 
 (defun emeteo-valid-temp-p (temp)
   "Checks whether temp is a valid temperature value"
   (null (null (string-match "^[-+]?[0-9]+[.,]?[0-9]*$" temp))))
+
+
 
 
 (provide 'emeteo-parse)

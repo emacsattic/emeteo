@@ -1,3 +1,13 @@
+2004-07-11: Sebastian Freundt  <hroptatyr@gna.org>
+
+	* emeteo-parse.el: partially abstracted parser and wash module
+	generation
+
+	* emeteo-utils.el:
+	- added `emeteo-utils-eval-val' to evaluate more comfortably
+	- enhanced the `emeteo-utils-find-key-val' with plist-get
+	primitives
+
 2004-06-26: Sebastian Freundt  <hroptatyr@gna.org>
 
 	* emeteo-stations.el: added complete list of icao and wmo stations
@@ -23,11 +33,11 @@
 
 2004-06-17: Sebastian Freundt  <hroptatyr@gna.org>
 
-	* emeteo-modeline.el: added emeteo-modeline-specifiers to choose which specifiers
-	are displayed on the modeline.
+	* emeteo-modeline.el: added emeteo-modeline-specifiers to choose which
+	specifiers are displayed on the modeline.
 
-	* emeteo-gnus.el: added keyword variables to determine which keywords are used for
-	gnus-header-format.
+	* emeteo-gnus.el: added keyword variables to determine which keywords
+	are used for gnus-header-format.
 
 	* emeteo.el: added :type keyword in defcustoms.
 
@@ -39,7 +49,8 @@
 
 	* ChangeLog: added a ChangeLog file ;)
 
-	* emeteo-parse.el: fixed a bug in emeteo-fetch-chain if one of the functions fails
+	* emeteo-parse.el: fixed a bug in emeteo-fetch-chain if one of the
+	functions fails
 
 2004-06-05: Sebastian Freundt  <hroptatyr@gna.org>
 
@@ -47,7 +58,8 @@
 
 2004-05-29: Sebastian Freundt  <hroptatyr@gna.org>
 
-	* emeteo.el: `emeteo-data-sources' is declared a flexible chunk-driven variable from now on.
+	* emeteo.el: `emeteo-data-sources' is declared a flexible chunk-driven
+	variable from now on.
 
 2004-05-24: Sebastian Freundt  <hroptatyr@gna.org>
 
@@ -62,17 +74,21 @@
 
 2004-04-09: Sebastian Freundt  <hroptatyr@gna.org>
 
-	* emeteo-parse.el: abstracted parsing a little more: after valuation hooks run through the data derived from
-	this action are fed to a (customizable) decision function
+	* emeteo-parse.el: abstracted parsing a little more: after valuation hooks
+	run through the data derived from this action are fed to a (customizable)
+	decision function
 
 2004-04-07: Sebastian Freundt  <hroptatyr@gna.org>
 
 	* emeteo.el: 
-	- parsing of *emeteo* buffers is split into the raw parsing process and the valuation process
-	further parsing of *emeteo* buffers has been modularized to easily add new parsers
+	- parsing of *emeteo* buffers is split into the raw parsing process and
+	the valuation process further parsing of *emeteo* buffers has been 
+	modularized to easily add new parsers
 	- keywords are customizable now
 
 	* emeteo-parse.el:
-	- parsing of *emeteo* buffers is split into the raw parsing process and the valuation process
-	- further parsing of *emeteo* buffers has been modularized to easily add new parsers
+	- parsing of *emeteo* buffers is split into the raw parsing process and
+	the valuation process
+	- further parsing of *emeteo* buffers has been modularized to easily add
+	new parsers
 	- keywords are customizable now

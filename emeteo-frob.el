@@ -68,6 +68,13 @@ Likely values are `wget', `w3m', `lynx' and `curl'."
   :group 'emeteo)
 
 
+(defconst emeteo-method-noaa-url "weather.noaa.gov"
+  "FQDN part of the weather URL.")
+(defconst emeteo-method-noaa-dir "pub/data/observations/metar/decoded"
+  "Directory part of the weather URL.")
+
+
+
 (defun emeteo-frob-split-uri (uri)
   "Splits URI `uri' to a list (hostname protocol filename)."
   (let* ((raw-split (split-string uri "://"))
@@ -91,6 +98,7 @@ Likely values are `wget', `w3m', `lynx' and `curl'."
 (defun emeteo-frob-uri-nstream (uri)
   "Fetch http-stream."
   (let* ((uri-spec (emeteo-frob-split-uri uri))
+         (user-agent (format "%s %s" emacs-program-name emacs-program-version))
          (hostname (car uri-spec))
          (protocol (car (cdr-safe uri-spec)))
          (filename (car (cdr-safe (cdr-safe uri-spec))))
@@ -104,9 +112,19 @@ Likely values are `wget', `w3m', `lynx' and `curl'."
                                     protocol))
          (debug-buf (and emeteo-debug-p
                          (get-buffer-create "*weather*"))))
-    (process-send-string proc
-                         ;; This should also not be hardcoded.
-                         (format "GET /%s HTTP/1.0\r\n\r\n" filename))
+    (process-send-string
+     proc
+     ;; This should also not be hardcoded.
+     (format (concat "GET /%s HTTP/1.0\r\n"
+                     "MIME-Version: 1.0\r\n"
+                     "Connection: close\r\n"
+                     "Extension: Security/Digest Security/SSL\r\n"
+                     "Host: %s\r\n"
+                     "Accept: */*\r\n"
+                     "User-Agent: %s\r\n\r\n")
+             filename
+             hostname
+             user-agent))
 
     ;; Watch us spin and stop Emacs from doing anything else!
     (while (equal (process-status proc) 'open)
@@ -119,6 +137,7 @@ Likely values are `wget', `w3m', `lynx' and `curl'."
       (if (looking-at "^HTTP/...\\s-+200\\s-OK")
           buf))))
 ;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
+;; (emeteo-frob-uri-nstream "http://weather.noaa.gov/pub/data/observations/metar/decoded/EDDI.TXT")
 
 
 (defun emeteo-frob-uri-url-synchronously (uri)
@@ -149,6 +168,7 @@ Likely values are `wget', `w3m', `lynx' and `curl'."
           (insert-buffer url-working-buffer)
           buf)))))
 ;; (emeteo-frob-uri-url-asynchronously "http://www.met.fu-berlin.de/de/wetter/")
+;; (emeteo-frob-uri-url-asynchronously "http://weather.noaa.gov/pub/data/observations/metar/decoded/EDDI.TXT")
 
 
 (defun emeteo-frob-uri-external (url)
@@ -168,6 +188,11 @@ Likely values are `wget', `w3m', `lynx' and `curl'."
       (when (eq 0 (apply 'call-process program nil t nil args))
         buf))))
 ;; (emeteo-frob-uri-external "http://www.met.fu-berlin.de/de/wetter/")
+;; (emeteo-frob-uri-external "http://weather.noaa.gov/pub/data/observations/metar/decoded/EDDI.TXT")
+
+;; (emeteo-frob-uri-nstream "http://weather.noaa.gov/pub/data/observations/metar/decoded/ZWSH.TXT")
+;; (emeteo-frob-uri-nstream "http://weather.noaa.gov/pub/data/observations/metar/decoded/51709.TXT")
+
 
 
 (provide 'emeteo-frob)

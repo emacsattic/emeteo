@@ -92,9 +92,33 @@ of SETS."
                      ((symbolp keyword)
                       (intern (format ":%s" keyword)))
                      (t nil)))
-         (keypos (position keyw list)))
-    (and keypos
-         (nth (1+ keypos) list))))
+         (plist (if (evenp (length list))
+                    list
+                  (cdr list))))
+    (plist-get plist keyw)))
+
+
+(defun emeteo-utils-eval-val (value &optional type-predicate)
+  "Evals VALUE whatever this is."
+  (let* ((type-predicate (or type-predicate
+                             'listp))
+         (result
+          (cond ((funcall type-predicate value)
+                 value)
+                ((functionp value)
+                 (funcall value))
+                ((functionp (car-safe value))
+                 (apply 'funcall value))
+                ((symbolp value)
+                 (eval value))
+                ((stringp value)
+                 value)
+                (t nil))))
+    (and (funcall type-predicate result)
+         result)))
+;;(emeteo-utils-eval-val emeteo-temperature-introductory-strings)
+
+
 
 (defun emeteo-utils-composition-chain (chain)
   "Creates the composition of the CHAIN of functions, i.e.

@@ -67,6 +67,12 @@
 ;;
 ;; This project is just to demonstrate my definition of usability! >8) <- hroptatyr
 
+;;; Todo:
+;; - synch up with xwem-weather and its means of fetching data
+;; - abstractize fetching via (define-emeteo-fetch-method ...)
+;; - abstractize rule chains via (define-emeteo-rule-chain ...)
+;; - make those new definitions part of the -sources
+
 ;;; Code:
 
 (require 'emeteo-frob)
@@ -74,8 +80,8 @@
 (require 'emeteo-utils)
 
 
-(defconst emeteo-version-number "V0.3 $Revision$"
-  "Version number.")
+(defconst emeteo-version-number "V0.4 $Revision$"
+  "Emacs Meteo Version number.")
 (defconst emeteo-version
   (format "emacs meteorological package %s"
           emeteo-version-number)
@@ -86,7 +92,7 @@
   "General interface to meteorological data."
   :group 'applications)
 
-(defcustom emeteo-timeout 2
+(defcustom emeteo-timeout 3
   "Emeteo timeout value in seconds.
 This defines how long to wait for the response of data requests."
   :group 'emeteo
@@ -135,7 +141,7 @@ be used as default."
     emeteo-decide-data
     emeteo-valuate-data
     emeteo-parse-buffer
-    emeteo-wash
+    emeteo-wash-html
     emeteo-frob-uri
     )
   "Chain of functions called from right to left, this defines
@@ -173,6 +179,11 @@ The first function is given the params from the calling function."
 
 
 ;;; fetching
+
+;;(defmacro emeteo-define-fetch-chain 
+
+
+;;; actual fetching
 
 (defun emeteo-fetch-all (&optional specs-list)
   "Fetches metar information of all identifiers in `specs-list'
@@ -220,6 +231,7 @@ Optional FETCH-CHAIN may specify another chain to be funcalled."
                               uri)))
     (eval (emeteo-utils-composition-chain fetch-chain))))
 ;; (emeteo-fetch-uri "http://www.met.fu-berlin.de/de/wetter/")
+;; (emeteo-fetch-uri "http://weather.noaa.gov/pub/data/observations/metar/decoded/EDDI.TXT")
 
 
 
