@@ -35,6 +35,7 @@
 
 (require 'timer)
 (require 'emeteo)
+(require 'emeteo-utils)
 
 
 (defgroup emeteo-modeline nil

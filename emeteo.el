@@ -72,6 +72,7 @@
 
 (require 'emeteo-frob)
 (require 'emeteo-parse)
+(require 'emeteo-utils)
 
 
 (defconst emeteo-version-number "V0.3 $Revision$"
@@ -93,22 +94,7 @@ This defines how long to wait for the response of data requests."
   :type 'integer)
 
 
-(defcustom emeteo-data-sources
-  '((berlin
-     :region-path (europe germany berlin)
-     :uri "http://www.met.fu-berlin.de/de/wetter/"
-     :uri-coordinates ((52 25) (13 13))
-     :fallback ("http://weather.yahoo.com/forecast/GMXX0007.html")
-     :fetch-chain default
-     :converter-chain celsius
-     :modeline-format ("%s:%s%sw%s%s" :shortname temp :temp-unit-string wind :wind-unit-string)
-     :temp-unit celsius
-     :temp-unit-string "°C"
-     :wind-unit meterspersecond
-     :wind-unit-string "m/s"
-     :name "Berlin"
-     :shortname "B")
-    )
+(defcustom emeteo-data-sources nil
   "Data source specifier list.
 This defines how and where to fetch data.
 
@@ -127,7 +113,11 @@ you want.
 There is no predefined set of supported or necessary keywords.
 
 On the other hand, most of the provided functionality within this 
-repository lets you customize which keywords to use for which purposes."
+repository lets you customize which keywords to use for which purposes.
+
+See file `emeteo-stations.el' for an example initial value.
+Also see example setups
+(e.g. at http://www.math.tu-berlin.de/~freundt/.emeteo)."
   :group 'emeteo
   :type 'list)
 

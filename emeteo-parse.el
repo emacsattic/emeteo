@@ -78,6 +78,17 @@ at the same time."
   :group 'emeteo)
 
 
+(defcustom emeteo-status-introductory-strings
+  '(
+    ("current\\(?:ly\\)?\\s-?" "aktuelle?s?")
+    ("weather" "status")
+    )
+  "Some strings often used to introduce current weather status.
+Useful to adapt on pages where thousands of status values are listed
+at the same time."
+  :group 'emeteo)
+
+
 ;; general stuff
 
 (defcustom emeteo-parse-hook
@@ -88,6 +99,7 @@ at the same time."
     ;;emeteo-parse-sight
     ;;emeteo-parse-light
     ;;emeteo-parse-humidity
+;;    emeteo-parse-status
     )
   "Hook called when an *emeteo* buffer is to be parsed.
 This hook should contain all parse modules to be called.
@@ -105,6 +117,7 @@ cdr."
   '(
     (temp . emeteo-valuate-temperature)
     (wind . emeteo-valuate-wind)
+;;    (stat . emeteo-valuate-stat)
     )
   "Alist of hooks to be called after parsing the raw data.
 Each entry is a cons cell with the emeteo parse identifier
@@ -227,7 +240,7 @@ THIS NEEDS TO BE MORE ABSTRACTED."
 ;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
 
 (defun emeteo-valuate-wind (parse-data &optional wind-format)
-  "Valuates a list of given temperatures.
+  "Valuates a list of given wind data.
 This defun currently gives position in list as score. :o."
   (let* ((wind-data (cdr parse-data))
          (init-score 0))
@@ -243,6 +256,44 @@ This defun currently gives position in list as score. :o."
 ;;(setq tes2 (emeteo-valuate-data test))
 ;;(emeteo-decide-data tes2)
 
+
+
+;;; status parsing
+
+(defun emeteo-parse-status (buffer &optional emeteo-spec)
+  "Parses BUFFER for occurences of a current status spec.
+Optional EMETEO-SPEC is ignored at the moment.
+
+Returns a cons cell '\(wind suspects) where 'wind is the
+emeteo parse identifier and suspects are wind/unit pairs.
+
+THIS NEEDS TO BE MORE ABSTRACTED."
+  (let* ((statintr (mapconcat 'identity
+                              (emeteo-utils-product-set emeteo-status-introductory-strings 'concat)
+                              "\\|"))
+         (statrexp (format "\\(?:%s\\):?\\s-+\\(.*\\)"
+                           statintr))
+         (result))
+    (with-current-buffer buffer
+      (save-excursion
+        (goto-char (point-min))
+        (while (re-search-forward statrexp nil t)
+          (add-to-list 'result `(:stat ,(match-string 1)
+                                 :match ,(match-string 0))))))
+    (cons 'stat result)))
+
+(defun emeteo-valuate-stat (parse-data &optional stat-format)
+  "Valuates a list of given status expressions.
+This defun currently gives position in list as score. :o."
+  (let* ((stat-data (cdr parse-data))
+         (init-score 0))
+    (cons 'stat
+          (mapcar (lambda (dat)
+                    (cons (incf init-score)
+                          (format "%s"
+                                  (emeteo-utils-find-key-val ':stat dat)
+                                  )))
+                  stat-data))))
 
 
 
