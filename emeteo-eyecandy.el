@@ -42,8 +42,9 @@
   :prefix "emeteo-eyecandy-"
   :group 'emeteo)
 
-(defcustom emeteo-eyecandy-icons-directory "~/mylisp/emeteo/etc/pixmaps"
-  "foo"
+(defcustom emeteo-eyecandy-icons-directory
+  (concat (file-name-directory (locate-library "emeteo")) "etc")
+  "Directory of modeline pixmaps."
   :group 'emeteo-eyecandy)
 (defcustom emeteo-eyecandy-icons-list
   '((cloud . "cloud-mini.xpm")

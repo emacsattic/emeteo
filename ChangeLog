@@ -1,3 +1,13 @@
+2004-06-26: Sebastian Freundt  <hroptatyr@gna.org>
+
+	* emeteo-stations.el: added complete list of icao and wmo stations
+
+	* emeteo-storage.el: added new storage feature to save fetched values
+
+2004-06-25: Sebastian Freundt  <hroptatyr@gna.org>
+
+	* emeteo-modeline.el: got rid of old funs `emeteo' and `emeteo-stop'
+
 2004-06-24: Sebastian Freundt  <hroptatyr@gna.org>
 
 	* emeteo-frob.el:

@@ -25,7 +25,6 @@
 ;; emeteo is a general emacs interface to provide meteorologic data
 
 ;; For more information, see the following URLs:
-;; * http://sf.net/projects/emeteo/
 ;; * http://gna.org/projects/emeteo/
 
 
@@ -158,6 +157,12 @@ The first function is given the params from the calling function."
   :type 'boolean)
 
 
+(defcustom emeteo-after-fetch-hook nil
+  "Hook run after fetching (= frobbing and parsing) of metar data."
+  :group 'emeteo
+  :type '(repeat (symbol :value "" :tag "Function")))
+
+
 (defvar emeteo-insinuated nil)
 
 
@@ -198,7 +203,9 @@ If optional `specs-list' is omitted `emeteo-data-sources' is used."
          (debug-buf (and emeteo-debug-p
                          (get-buffer-create "*emeteo debug*"))))
     (and uri
-         (cons emeteo-spec (emeteo-fetch-uri uri)))))
+         (let ((result (cons emeteo-spec (emeteo-fetch-uri uri))))
+           (run-hook-with-args 'emeteo-after-fetch-hook result)
+           result))))
 ;;(emeteo-fetch 'berlin)
 
 

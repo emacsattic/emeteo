@@ -24,7 +24,6 @@
 ;;
 
 ;; For more information, see the following URLs:
-;; * http://sf.net/projects/emeteo/
 ;; * http://gna.org/projects/emeteo/
 
 ;;; Code:

@@ -43,7 +43,7 @@
   :prefix "emeteo-modeline-"
   :group 'emeteo)
 
-(defcustom emeteo-modeline-interval 900
+(defcustom emeteo-modeline-interval 300
   "Seconds between updates of time in the mode line."
   :group 'emeteo-modeline
   :type 'integer)
@@ -86,6 +86,13 @@ announce that fetching has failed."
   :type `(repeat (symbol :tag "emeteo data source specifier"
                          :value ,(caar emeteo-data-sources))))
 
+(defcustom emeteo-modeline-timer-function 'run-with-idle-timer
+  "Timer function to use."
+  :group 'emeteo-modeline
+  :type '(choice
+          (function-item run-with-timer)
+          (function-item run-with-idle-timer)))
+
 (defvar emeteo-modeline-timer nil)
 (defvar emeteo-modeline-string nil)
 
@@ -111,15 +118,14 @@ Updates automatically every minute."
 
   ;; ... and start a timer to do it automatically thereafter.
   (setq emeteo-modeline-timer
-        (run-at-time emeteo-modeline-interval emeteo-modeline-interval 'emeteo-modeline-function)))
-(defalias 'emeteo 'emeteo-modeline)
+        (funcall emeteo-modeline-timer-function emeteo-modeline-interval emeteo-modeline-interval 'emeteo-modeline-function)))
 
-(defun emeteo-stop ()
+(defun emeteo-modeline-stop ()
   (interactive)
   (and emeteo-modeline-timer
        (cancel-timer emeteo-modeline-timer))
-  (setq emeteo-modeline-timer nil)
-  (setq emeteo-modeline-string nil))
+  (setq emeteo-modeline-timer nil
+        emeteo-modeline-string nil))
 
 
 (defvar emeteo-insinuated nil)
