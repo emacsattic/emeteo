@@ -28,6 +28,9 @@
 ;; * http://gna.org/projects/emeteo/
 
 ;;; Changelog:
+;; 2004/04/09:
+;; - abstracted parsing a little more: after valuation hooks run through the data derived from
+;;   this action are fed to a (customizable) decision function
 ;; 2004/04/07:
 ;; - parsing of *emeteo* buffers is split into the raw parsing process and the valuation process
 ;; - further parsing of *emeteo* buffers has been modularized to easily add new parsers
@@ -38,41 +41,16 @@
 (require 'emeteo-utils)
 
 
-(defvar emeteo-metspecs '(temp press)
-  "Determins metar specifiers.")
-
-
-(defun emeteo-wash (buffer)
-  (with-current-buffer buffer
-    (goto-char (point-min))
-    (while (search-forward (concat (char-to-string 13)) nil t)
-        (replace-match ""))
-
-    ;;(encode-coding-region (point-min) (point-max))
-
-    (goto-char (point-min))
-    (while (re-search-forward "[ \t\n]+" nil t)
-      (replace-match "  "))
-
-    (goto-char (point-min))
-    (while (re-search-forward "&nbsp;" nil t)
-      (replace-match " "))
-
-    (goto-char (point-min))
-    (while (re-search-forward "<.+?>" nil t)
-      (replace-match " "))
-
-    (goto-char (point-min))
-    (while (re-search-forward "\\s-\\s-+" nil t)
-      (replace-match "   "))))
-    
 
 (defcustom emeteo-temperature-units
   '(("&deg;?" "&ordm;?" "°")
     ("C" "F"))
   "This is a list of lists of possible temperature units.
-Elements of different lists are semi-combined (semi-product set).
-Regular expressions are allowed."
+Elements of different lists are combined specially
+(half/semi-product set).
+Regular expressions are allowed.
+
+Thanks to hynek for this wonderful idea."
   :group 'emeteo)
 ;;; example usage:
 ;; (emeteo-utils-product-set emeteo-temperature-units 'concat)
@@ -126,7 +104,29 @@ and called or a hook's value whose elements are called or
 a single function which is called.
 
 Currently there's only one function that does the whole
-valuation of raw data, see `emeteo-valuate-data'."
+valuation of raw data, see `emeteo-valuate-data'.
+Each valuation function should return a valuated/weighted
+data list, i.e. the raw data list entries get scores.
+
+Note: that there should be at least one valuation function
+in each hook that modifies data to a more suitable output."
+  :group 'emeteo)
+
+
+(defcustom emeteo-decision-functions-alist
+  '(
+    (temp . emeteo-decide-min-score)
+    )
+  "Alist of functions to be called after the valuation of the
+raw data (see `emeteo-valuate-hooks-alist').
+
+The function is given the valuated data and then should take a
+decision, i.e. return a value based on the data and the scores
+assigned to the data.
+
+There are several predefined decision-functions:
+- emeteo-decide-max-score  decides for the maximal valuation
+- emeteo-decide-min-score  decides for the minimal valuation"
   :group 'emeteo)
 
 
@@ -160,19 +160,25 @@ THIS NEEDS TO BE MORE ABSTRACTED."
                                  :unit ,(match-string 2)
                                  :match ,(match-string 0))))))
     (cons 'temp result)))
-;; (setq emeteo-valuate-hooks-alist '((temp . identity)))
 ;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
 ;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
 
 (defun emeteo-valuate-temperature (parse-data)
-  "Valuates a list of given temperatures."
-  (let* ((parse-ident (car parse-data))
-         (parse-data-cdr (cdr parse-data))
-         (parse-data-car (car parse-data-cdr))
-         (result (format "%s%s"
-                         (emeteo-find-key-val ':temp parse-data-car)
-                         (emeteo-find-key-val ':unit parse-data-car))))
-    (cons 100 `(,parse-ident ,result))))
+  "Valuates a list of given temperatures.
+This defun currently gives position in list as score. :o"
+  (let* ((temp-data (cdr parse-data))
+         (init-score 0))
+    (cons 'temp
+          (mapcar (lambda (dat)
+                    (cons (incf init-score)
+                          (format "%s%s"
+                                  (emeteo-find-key-val ':temp dat)
+                                  (emeteo-find-key-val ':unit dat))))
+                  temp-data))))
+;;(emeteo-frob-uri "http://www.math.tu-berlin.de/~freundt/emeteo-test.html")
+;;(setq test (emeteo-parse-buffer (get-buffer "*emeteo*")))
+;;(setq tes2 (emeteo-valuate-data test))
+;;(emeteo-decide-data tes2)
 
 
 
@@ -208,17 +214,103 @@ raw data, look at `emeteo-valuate-data' for more information."
                                         (t nil)))
                    (parse-ident-raw-data (assoc parse-ident raw-data)))
               (and val-hook-hook
-                   (let* ((vals
-                           (mapcar (lambda (fun)
-                                     (funcall fun parse-ident-raw-data))
-                                   val-hook-hook)))
-                     (cdr (car (sort vals '>)))))))
+                   (mapc (lambda (fun)
+                           (setq parse-ident-raw-data
+                                 (funcall fun parse-ident-raw-data)))
+                         val-hook-hook)
+                   parse-ident-raw-data)))
           emeteo-valuate-hooks-alist))
+
+
+
+(defun emeteo-decide-data (val-data)
+  "Decides for data in VAL-DATA according to `emeteo-decision-functions-alist'"
+  (mapcar (lambda (dec-funs)
+            (let* ((val-ident (car dec-funs))
+                   (dec-funs-fun (cdr dec-funs))
+                   (val-ident-val-data (assoc val-ident val-data)))
+              (funcall dec-funs-fun val-ident-val-data)))
+          emeteo-decision-functions-alist))
+;;(emeteo-frob-uri "http://www.math.tu-berlin.de/~freundt/emeteo-test.html")
 ;;(setq test (emeteo-parse-buffer (get-buffer "*emeteo*")))
-;;(emeteo-valuate-data test)
+;;(setq tes2 (emeteo-valuate-data test))
+;;(emeteo-decide-data tes2)
+;;(emeteo-frob "B")
 
 
 
+
+
+;;; some predefined (general purpose) decision funs
+(defun emeteo-decide-max-score (val-data)
+  "Decides for the data with maximal score in VAL-DATA
+and returns it.
+
+This function expects to have a list with pairs like
+\(score . value) in VAL-DATA.
+
+Note: This will work only if the valuation function puts
+integer scores to the data."
+  (let* ((parse-ident (car val-data))
+         (data (cdr val-data))
+         (max-val-data (emeteo-decide-by-set-function data 'max)))
+    (cons parse-ident max-val-data)))
+
+(defun emeteo-decide-min-score (val-data)
+  "Decides for the data with minimal score in VAL-DATA
+and returns it.
+
+This function expects to have a list with pairs like
+\(score . value) in VAL-DATA.
+
+Note: This will work only if the valuation function puts
+integer scores to the data."
+  (let* ((parse-ident (car val-data))
+         (data (cdr val-data))
+         (min-val-data (emeteo-decide-by-set-function data 'min)))
+    (cons parse-ident min-val-data)))
+
+;;; all doing wrapper function
+(defun emeteo-decide-by-set-function (score-data-alist set-function)
+  "Decides for the data with score returned by running SET-FUNCTION
+on SCORE-DATA-ALIST"
+  (and score-data-alist
+       (cdr-safe (assoc (eval (cons set-function (mapcar 'car score-data-alist)))
+                        score-data-alist))))
+
+
+
+
+
+;;; this is the next to get into the abstraction process: Wash Modules
+(defun emeteo-wash (buffer)
+  (with-current-buffer buffer
+    (goto-char (point-min))
+    (while (search-forward (concat (char-to-string 13)) nil t)
+        (replace-match ""))
+
+    ;;(encode-coding-region (point-min) (point-max))
+
+    (goto-char (point-min))
+    (while (re-search-forward "[ \t\n]+" nil t)
+      (replace-match "  "))
+
+    (goto-char (point-min))
+    (while (re-search-forward "&nbsp;" nil t)
+      (replace-match " "))
+
+    (goto-char (point-min))
+    (while (re-search-forward "<.+?>" nil t)
+      (replace-match " "))
+
+    (goto-char (point-min))
+    (while (re-search-forward "\\s-\\s-+" nil t)
+      (replace-match "   "))))
+    
+
+
+;;; this is the old routine which gets obsoleted by
+;;; the implementation of Hynek's Great Idea(TM) ;)
 (defun emeteo-parse (buffer)
   "Returns a metar information alist of the form
   \( metkey . value ).

@@ -105,9 +105,11 @@
                  (insert-string (buffer-string) debug-buf))
            
             ;;; AAAAAAAAARGH, this is no good, why should a frobber parse the data it frobs??
+            ;;; get a hook and an abstract wrapper here
             (let* ((raw-parse-data (emeteo-parse-buffer (current-buffer)))
-                   (val-parse-data (emeteo-valuate-data raw-parse-data)))
-              val-parse-data))
+                   (val-parse-data (emeteo-valuate-data raw-parse-data))
+                   (dec-parse-data (emeteo-decide-data val-parse-data)))
+              dec-parse-data))
         nil))))
 ;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
 

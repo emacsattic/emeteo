@@ -97,6 +97,7 @@ Updates automatically every minute."
                                  (concat region
                                          ":"
                                          (or (car-safe temp)
+                                             temp
                                              "n/a"))))
                              metinfo " ")))
     ;; This is inside the let binding, but we are not going to document
