@@ -21,9 +21,12 @@
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; Commentary:
-;; Put (require 'emeteo-modeline) in your ~/.emacs and try M-x emeteo
+;; This is an emeteo frontend displaying data fetched by emeteo in the
+;; modeline.
 
 ;; Usage:
+;; Put (require 'emeteo-modeline) in your ~/.emacs and 
+;; try M-x emeteo-modeline RET to start the modeline display
 
 ;;; History:
 ;;
@@ -44,17 +47,24 @@
   :group 'emeteo-modeline
   :type 'integer)
 
+(defcustom emeteo-modeline-default-format '("%s:%s%s" :shortname temp :temp-unit-string)
+  "Defines how modeline entries look.
+This list consists of a format string in the car and arbitrary result
+keys or keywords from the data-sources in the cdr."
+  :group 'emeteo-modeline
+  :type 'list)
+
 (defcustom emeteo-modeline-default-specname-keyword ':shortname
   "Keyword from `emeteo-data-sources' to be used when
 displaying as announcement for a particular spec."
   :group 'emeteo-modeline
   :type 'sexp)
 
-(defcustom emeteo-modeline-default-format '("%s:%s%sw%s%s" :shortname temp :temp-unit-string wind :wind-unit-string)
-  "Defines how modeline entries look.
-This list consists of a format string in the car and arbitrary result
-keys or keywords from the data-sources in the cdr."
-  :group 'emeteo-modeline)
+(defcustom emeteo-modeline-specifier-local-format-keyword ':modeline-format
+  "Determines which keyword to use to obtain modeline-formats per-spec.
+The value of this keyword would overwrite `emeteo-modeline-default-format'."
+  :group 'emeteo-modeline
+  :type 'symbol)
 
 
 (defcustom emeteo-modeline-default-fail-indicator-string '"n/a"
@@ -63,9 +73,17 @@ announce that fetching has failed."
   :group 'emeteo-modeline
   :type 'string)
 
-(defcustom emeteo-modeline-eyecandy-p t
-  ""
-  :group 'emeteo-modeline)
+(defcustom emeteo-modeline-eyecandy-p nil
+  "Determines whether to use eyecandy in the modeline."
+  :group 'emeteo-modeline
+  :type 'boolean)
+
+
+(defcustom emeteo-modeline-specifiers nil
+  "List of specifiers to be fetched for displaying in the modeline."
+  :group 'emeteo-modeline
+  :type `(repeat (symbol :tag "emeteo data source specifier"
+                         :value ,(caar emeteo-data-sources))))
 
 (defvar emeteo-modeline-timer nil)
 (defvar emeteo-modeline-string nil)
@@ -112,17 +130,26 @@ Updates automatically every minute."
 
 
 (defun emeteo-modeline-function ()
-  (let* ((metinfo (emeteo-fetch-all)))
+  (let* ((specs (or emeteo-modeline-specifiers
+                    (mapcar 'car emeteo-data-sources)))
+         (metinfo (or (and specs
+                           (mapcar 'emeteo-fetch specs))
+                      (emeteo-fetch-all))))
     (setq
      emeteo-modeline-string
      (mapcar
       (lambda (metspec)
         (let* ((result metspec)
                (spec (car-safe metspec))
-               (fullspec (assoc spec emeteo-data-sources)))
+               (fullspec (assoc spec emeteo-data-sources))
+               ;; now some additional specs
+               (modeline-format
+                (or (emeteo-utils-find-key-val
+                     emeteo-modeline-specifier-local-format-keyword fullspec)
+                    emeteo-modeline-default-format)))
           (list " "
                 (emeteo-utils-format fullspec result
-                                     emeteo-modeline-default-format
+                                     modeline-format
                                      emeteo-modeline-default-fail-indicator-string)
                 (and emeteo-modeline-eyecandy-p
                      (emeteo-eyecandy-generate-modeline-extent 'storm)))))

@@ -89,24 +89,25 @@
 (defcustom emeteo-timeout 2
   "Emeteo timeout value in seconds.
 This defines how long to wait for the response of data requests."
-  :group 'emeteo)
+  :group 'emeteo
+  :type 'integer)
 
 
 (defcustom emeteo-data-sources
-  '(
-    (berlin :region-path '(europe germany berlin)
-            :uri "http://www.met.fu-berlin.de/de/wetter/"
-            :uri-coordinates ((52 25) (13 13))
-            :fallback '("http://weather.yahoo.com/forecast/GMXX0007.html")
-            :fetch-chain 'default
-            :converter-chain 'celsius
-            :temp-unit 'celsius
-            :temp-unit-string "°C"
-            :wind-unit 'meterspersecond
-            :wind-unit-string "m/s"
-            :name "Berlin"
-            :shortname "B"
-            )
+  '((berlin
+     :region-path (europe germany berlin)
+     :uri "http://www.met.fu-berlin.de/de/wetter/"
+     :uri-coordinates ((52 25) (13 13))
+     :fallback ("http://weather.yahoo.com/forecast/GMXX0007.html")
+     :fetch-chain default
+     :converter-chain celsius
+     :modeline-format ("%s:%s%sw%s%s" :shortname temp :temp-unit-string wind :wind-unit-string)
+     :temp-unit celsius
+     :temp-unit-string "°C"
+     :wind-unit meterspersecond
+     :wind-unit-string "m/s"
+     :name "Berlin"
+     :shortname "B")
     )
   "Data source specifier list.
 This defines how and where to fetch data.
@@ -127,26 +128,16 @@ There is no predefined set of supported or necessary keywords.
 
 On the other hand, most of the provided functionality within this 
 repository lets you customize which keywords to use for which purposes."
-  :group 'emeteo)
+  :group 'emeteo
+  :type 'list)
 
 
 (defcustom emeteo-default-spec-identifier 'berlin
-  ""
-  :group 'emeteo)
+  "Spec identifier (i.e. car in emeteo-data-sources alist) that should
+be used as default."
+  :group 'emeteo
+  :type 'symbol)
 
-
-
-;;;; OLD STUFF BEGINS HERE
-;;; this will move to emeteo-stations soon
-(defcustom emeteo-url-alist
-  '(
-    ("B" "http://www.met.fu-berlin.de/de/wetter/")
-    ;;("HRO" "http://www.landhaus-k.de/wetter/wetter.htm")
-    ;;("MLT" "http://www.wetter.com/home/structure/control.php?sessionID=&Lang=DE&ms=1&ss=1&sss=1&id=700&type=WMO")
-    )
-  "old stuff ... soon to become obsolete."
-  :group 'emeteo)
-;;;; OLD STUFF ENDS HERE
 
 
 
@@ -166,16 +157,19 @@ i.e. a chain '\(A B C) is called like:
 \(A (B (C param)))
 
 The first function is given the params from the calling function."
-  :group 'emeteo)
+  :group 'emeteo
+  :type '(repeat (function :tag "emeteo fetch chain function")))
 
 
 
 (defcustom emeteo-debug-p nil
   "Predicate for debugging retrieved weather buffers"
-  :group 'emeteo)
+  :group 'emeteo
+  :type 'boolean)
 
 
 (defvar emeteo-insinuated nil)
+
 
 (defun emeteo-insinuate ()
   ;; (emeteo-init-glyphs)

@@ -50,6 +50,12 @@ displaying as place in the headers."
   :group 'emeteo-gnus
   :type 'sexp)
 
+(defcustom emeteo-gnus-specifier-local-format-keyword ':gnus-header-format
+  "Determines which keyword to use to obtain gnus header-formats per-spec.
+The value of this keyword would overwrite `emeteo-gnus-default-format'."
+  :group 'emeteo-modeline
+  :type 'symbol)
+
 (defcustom emeteo-gnus-default-fail-indicator-string '"n/a"
   "String used as an indicator in the header to
 announce that fetching has failed."
@@ -57,7 +63,7 @@ announce that fetching has failed."
   :type 'string)
 
 
-(defcustom emeteo-gnus-default-header-format '("%s%s (%s)" temp :unit-string :name)
+(defcustom emeteo-gnus-default-format '("%s%s (%s)" temp :temp-unit-string :name)
   "Defines how the rendered header looks like.
 This list consists of a format string in the car and arbitrary result
 keys or keywords from the data-sources in the cdr."
@@ -66,15 +72,21 @@ keys or keywords from the data-sources in the cdr."
 
 
 
+
 ;;;###autoload
 (defun emeteo-gnus-generate-header (spec &optional header-format)
 ;;; this is the fun i currently have in my posting-styles
   (let* ((result (emeteo-fetch spec))
+         (fullspec (assoc spec emeteo-data-sources))
          (format (or header-format
-                     emeteo-gnus-default-header-format))
-         (fullspec (assoc spec emeteo-data-sources)))
+                     (emeteo-utils-find-key-val
+                      emeteo-gnus-specifier-local-format-keyword fullspec)
+                     emeteo-gnus-default-header-format)))
     (or (and result
-             (emeteo-utils-format fullspec result format emeteo-gnus-default-fail-indicator-string))
+             (emeteo-utils-format fullspec
+                                  result
+                                  format
+                                  emeteo-gnus-default-fail-indicator-string))
         emeteo-gnus-default-fail-indicator-string)))
 ;;(emeteo-gnus-generate-header 'berlin)
 

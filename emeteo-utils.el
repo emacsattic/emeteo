@@ -115,9 +115,11 @@ should be the param given to the function before the last."
 
 
 ;;; Formatting and markup funs
-(defvar emeteo-default-fail-indicator-string "n/a"
+(defcustom emeteo-default-fail-indicator-string "n/a"
   "String used as a generic indicator to announce
-that fetching has failed.")
+that fetching has failed."
+  :group 'emeteo
+  :type 'string)
 (defun emeteo-utils-format (fullspec result format &optional fail-indicator-string)
   "This is the main formatting fun."
   (let* ((fail-indicator-string (or fail-indicator-string
