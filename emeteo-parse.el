@@ -172,8 +172,8 @@ This defun currently gives position in list as score. :o"
           (mapcar (lambda (dat)
                     (cons (incf init-score)
                           (format "%s%s"
-                                  (emeteo-find-key-val ':temp dat)
-                                  (emeteo-find-key-val ':unit dat))))
+                                  (emeteo-utils-find-key-val ':temp dat)
+                                  (emeteo-utils-find-key-val ':unit dat))))
                   temp-data))))
 ;;(emeteo-frob-uri "http://www.math.tu-berlin.de/~freundt/emeteo-test.html")
 ;;(setq test (emeteo-parse-buffer (get-buffer "*emeteo*")))
@@ -305,7 +305,8 @@ on SCORE-DATA-ALIST"
 
     (goto-char (point-min))
     (while (re-search-forward "\\s-\\s-+" nil t)
-      (replace-match "   "))))
+      (replace-match "   ")))
+  buffer)
     
 
 

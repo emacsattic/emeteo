@@ -86,12 +86,20 @@ of SETS."
       (mapcar 'emeteo-utils-flatten tree)))
    (t (list tree))))
  
-(defun emeteo-find-key-val (keyword list)
+(defun emeteo-utils-find-key-val (keyword list)
   "Finds KEYWORD in list and returns its value"
   (let ((keypos (position keyword list)))
     (and keypos
          (nth (1+ keypos) list))))
 
+(defun emeteo-utils-composition-chain (chain)
+  "Creates the composition of the CHAIN of functions, i.e.
+'\(a b c d) => (a (b (c d))), the last argument in a chain
+should be the param given to the function before the last."
+  (and chain
+       (or (and (car-safe chain)
+                (cons (car chain) (list (emeteo-utils-composition-chain (cdr-safe chain)))))
+           chain)))
 
 (provide 'emeteo-utils)
 

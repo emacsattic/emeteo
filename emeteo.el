@@ -43,6 +43,9 @@
 ;;
 
 ;;; Changelog:
+;; 2004/04/17:
+;; - the main hook fun is now (emeteo-fetch)
+;; - emeteo-fetch is called by composing `emeteo-fetch-chain'
 ;; 2004/04/07:
 ;; - parsing of *emeteo* buffers is split into the raw parsing process and the valuation process
 ;; - further parsing of *emeteo* buffers has been modularized to easily add new parsers
@@ -54,7 +57,7 @@
 (require 'emeteo-parse)
 
 
-(defconst emeteo-version-number "V0.1 $Revision$"
+(defconst emeteo-version-number "V0.2 $Revision$"
   "Version number.")
 (defconst emeteo-version
   (format "emacs meteorological package %s"
@@ -81,13 +84,35 @@ It is a list of the form:
   :group 'emeteo)
 
 ;;; this will move to emeteo-stations soon
-(defvar emeteo-url-alist
+(defcustom emeteo-url-alist
   '(
     ("B" "http://www.met.fu-berlin.de/de/wetter/")
     ;;("HRO" "http://www.landhaus-k.de/wetter/wetter.htm")
     ;;("MLT" "http://www.wetter.com/home/structure/control.php?sessionID=&Lang=DE&ms=1&ss=1&sss=1&id=700&type=WMO")
     )
-  "old stuff ... soon to become obsolete.")
+  "old stuff ... soon to become obsolete."
+  :group 'emeteo)
+
+
+(defcustom emeteo-fetch-chain
+  '(
+    emeteo-decide-data
+    emeteo-valuate-data
+    emeteo-parse-buffer
+    emeteo-wash
+    emeteo-frob-uri
+    )
+  "Chain of functions called from right to left, this defines
+what a fetch should look like.
+
+The functions return value should be the input of the next function,
+i.e. a chain '\(A B C) is called like:
+\(A (B (C param)))
+
+The first function is given the params from the calling function."
+  :group 'emeteo)
+
+
 
 (defcustom emeteo-debug-p nil
   "Predicate for debugging retrieved weather buffers"
@@ -112,7 +137,6 @@ It is a list of the form:
     (and emeteo-debug-p
          (erase-buffer debug-buf))
     (mapcar 'emeteo-fetch (mapcar 'car specs-list))))
-;;(emeteo-froball)
 
 
 (defun emeteo-fetch (&optional emeteo-spec specs-list)
@@ -126,23 +150,17 @@ It is a list of the form:
          (cons emeteo-spec (emeteo-fetch-uri uri)))))
 ;;(emeteo-fetch "B")
 
-(defun emeteo-fetch-uri (uri)
-  "Fetching is like:
-- frobbing
-- washing
-- parsing
-- valuating
-- deciding"
-  (let* ((frob-buf (emeteo-frob-uri uri)))
-    (and frob-buf
-         (with-current-buffer frob-buf
-           (emeteo-wash (current-buffer))
-           (and emeteo-debug-p
-                (insert-string (buffer-string) debug-buf))
-           (let* ((raw-parse-data (emeteo-parse-buffer (current-buffer)))
-                  (val-parse-data (emeteo-valuate-data raw-parse-data))
-                  (dec-parse-data (emeteo-decide-data val-parse-data)))
-             dec-parse-data)))))
+
+
+(defun emeteo-fetch-uri (uri &optional fetch-chain)
+  "Fetches according to `emeteo-fetch-chain'.
+The rightmost function in `emeteo-fetch-chain' will be given URI.
+
+Optional FETCH-CHAIN may specify another chain to be funcalled."
+  (let* ((fetch-chain (append (or fetch-chain
+                                  emeteo-fetch-chain)
+                              uri)))
+    (eval (emeteo-utils-composition-chain fetch-chain))))
 ;; (emeteo-fetch-uri "http://www.met.fu-berlin.de/de/wetter/")
 
 
