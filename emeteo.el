@@ -68,22 +68,6 @@
 ;;
 ;; This project is just to demonstrate my definition of usability! >8) <- hroptatyr
 
-
-;;; Changelog:
-;; 2004/05/29:
-;; - `emeteo-data-sources' is declared a flexible chunk-driven variable from now on.
-;; 2004/05/24:
-;; - new sources variable `emeteo-data-sources'
-;;   this is the main configuration source of emeteo
-;;   BEWARE this variable will have various syntax changes in the near future
-;; 2004/04/17:
-;; - the main hook fun is now (emeteo-fetch)
-;; - emeteo-fetch is called by composing `emeteo-fetch-chain'
-;; 2004/04/07:
-;; - parsing of *emeteo* buffers is split into the raw parsing process and the valuation process
-;; - further parsing of *emeteo* buffers has been modularized to easily add new parsers
-;; - keywords are customizable now
-
 ;;; Code:
 
 (require 'emeteo-frob)
@@ -116,8 +100,10 @@ This defines how long to wait for the response of data requests."
             :fallback '("http://weather.yahoo.com/forecast/GMXX0007.html")
             :fetch-chain 'default
             :converter-chain 'celsius
-            :unit 'celsius
-            :unit-string "°C"
+            :temp-unit 'celsius
+            :temp-unit-string "°C"
+            :wind-unit 'meterspersecond
+            :wind-unit-string "m/s"
             :name "Berlin"
             :shortname "B"
             )

@@ -78,7 +78,7 @@
 
     (with-current-buffer buf
       (goto-char (point-min))
-      (if (looking-at "^HTTP/...\\s-+200\\s-OK$")
+      (if (looking-at "^HTTP/...\\s-+200\\s-OK")
           buf))))
 ;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
 

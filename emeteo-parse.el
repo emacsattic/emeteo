@@ -27,15 +27,6 @@
 ;; * http://sf.net/projects/emeteo/
 ;; * http://gna.org/projects/emeteo/
 
-;;; Changelog:
-;; 2004/04/09:
-;; - abstracted parsing a little more: after valuation hooks run through the data derived from
-;;   this action are fed to a (customizable) decision function
-;; 2004/04/07:
-;; - parsing of *emeteo* buffers is split into the raw parsing process and the valuation process
-;; - further parsing of *emeteo* buffers has been modularized to easily add new parsers
-;; - keywords are customizable now
-
 ;;; Code:
 
 (require 'emeteo-utils)
@@ -56,14 +47,34 @@ Thanks to hynek for this wonderful idea."
 ;; (emeteo-utils-product-set emeteo-temperature-units 'concat)
 
 
+(defcustom emeteo-wind-units
+  '(("m/s"))
+  "This is a list of lists of possible wind speed units.
+Elements of different lists are combined specially
+(half/semi-product set).
+Regular expressions are allowed."
+  :group 'emeteo)
+
+
 (defcustom emeteo-temperature-introductory-strings
   '(
     ("current\\(?:ly\\)?\\s-?" "aktuelle?s?")
     ("wetter" "weather\\(?:.conditions?\\)" "temp\\(?:\\.\\|erature?\\)?")
     )
   "Some strings often used to introduce the current temperature.
-Useful to adopt on pages where thousands of temperatures are
+Useful to adapt on pages where thousands of temperatures are
 listed at the same time."
+  :group 'emeteo)
+
+
+(defcustom emeteo-wind-introductory-strings
+  '(
+    ("current\\(?:ly\\)?\\s-?" "aktuelle?s?")
+    ("wind\\(?:geschw?\\(?:\\.\\|indigkeit\\)?\\|\\s-?speed\\|\\s-velocity\\)")
+    )
+  "Some strings often used to introduce current wind speed and direction.
+Useful to adapt on pages where thousands of velocity values are listed
+at the same time."
   :group 'emeteo)
 
 
@@ -72,9 +83,8 @@ listed at the same time."
 (defcustom emeteo-parse-hook
   '(
     emeteo-parse-temperature
+    emeteo-parse-wind
     ;;emeteo-parse-pressure
-    ;;emeteo-parse-wind-direction
-    ;;emeteo-parse-wind-velocity
     ;;emeteo-parse-sight
     ;;emeteo-parse-light
     ;;emeteo-parse-humidity
@@ -94,6 +104,7 @@ cdr."
 (defcustom emeteo-valuate-hooks-alist
   '(
     (temp . emeteo-valuate-temperature)
+    (wind . emeteo-valuate-wind)
     )
   "Alist of hooks to be called after parsing the raw data.
 Each entry is a cons cell with the emeteo parse identifier
@@ -118,6 +129,7 @@ in each hook that modifies data to a more suitable output."
 (defcustom emeteo-decision-functions-alist
   '(
     (temp . emeteo-decide-min-score)
+    (wind . emeteo-decide-min-score)
     )
   "Alist of functions to be called after the valuation of the
 raw data (see `emeteo-valuate-hooks-alist').
@@ -140,7 +152,7 @@ There are several predefined decision-functions:
   "Parses BUFFER for occurences of a current temperature.
 Optional EMETEO-SPEC is ignored at the moment.
 
-Returns a cons cell \('temp suspects) where 'temp is the
+Returns a cons cell '\(temp suspects) where 'temp is the
 emeteo parse identifier and suspects are temperature/unit pairs.
 
 THIS NEEDS TO BE MORE ABSTRACTED."
@@ -183,6 +195,55 @@ This defun currently gives position in list as score. :o."
 ;;(emeteo-decide-data tes2)
 
 
+;;; wind parsing
+
+(defun emeteo-parse-wind (buffer &optional emeteo-spec)
+  "Parses BUFFER for occurences of a current wind spec.
+Optional EMETEO-SPEC is ignored at the moment.
+
+Returns a cons cell '\(wind suspects) where 'wind is the
+emeteo parse identifier and suspects are wind/unit pairs.
+
+THIS NEEDS TO BE MORE ABSTRACTED."
+  (let* ((windunits (mapconcat 'identity
+                               (emeteo-utils-product-set emeteo-wind-units 'concat)
+                               "\\|"))
+         (windintr (mapconcat 'identity
+                              (emeteo-utils-product-set emeteo-wind-introductory-strings 'concat)
+                              "\\|"))
+         (windrexp (format "\\(?:%s\\):?\\s-+\\([0-9.,]+\\)\\s-*\\(%s\\)"
+                           windintr
+                           windunits))
+         (result))
+    (with-current-buffer buffer
+      (save-excursion
+        (goto-char (point-min))
+        (while (re-search-forward windrexp nil t)
+          (add-to-list 'result `(:wind ,(match-string 1)
+                                 :unit ,(match-string 2)
+                                 :match ,(match-string 0))))))
+    (cons 'wind result)))
+;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
+;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
+
+(defun emeteo-valuate-wind (parse-data &optional wind-format)
+  "Valuates a list of given temperatures.
+This defun currently gives position in list as score. :o."
+  (let* ((wind-data (cdr parse-data))
+         (init-score 0))
+    (cons 'wind
+          (mapcar (lambda (dat)
+                    (cons (incf init-score)
+                          (format "%s"
+                                  (emeteo-utils-find-key-val ':wind dat)
+                                  )))
+                  wind-data))))
+;;(emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
+;;(setq test (emeteo-parse-buffer (get-buffer "*emeteo*")))
+;;(setq tes2 (emeteo-valuate-data test))
+;;(emeteo-decide-data tes2)
+
+
 
 
 ;;; more general parsing defuns
@@ -196,10 +257,11 @@ You can plug into this by adding your own modules to `emeteo-parse-hook'
 
 Note: This one does the mere parsing, the output should be considered
 raw data, look at `emeteo-valuate-data' for more information."
-  (let ((raw-specs (mapcar (lambda (fun)
-                             (funcall fun buffer emeteo-spec))
-                           emeteo-parse-hook)))
-    raw-specs))
+  (when buffer
+    (let ((raw-specs (mapcar (lambda (fun)
+                               (funcall fun buffer emeteo-spec))
+                             emeteo-parse-hook)))
+      raw-specs)))
 ;;(emeteo-parse-buffer (get-buffer "*emeteo*"))
 
 (defun emeteo-valuate-data (raw-data)
@@ -286,6 +348,7 @@ on SCORE-DATA-ALIST"
 
 ;;; this is the next to get into the abstraction process: Wash Modules
 (defun emeteo-wash (buffer)
+  (when buffer
   (with-current-buffer buffer
     (goto-char (point-min))
     (while (search-forward (concat (char-to-string 13)) nil t)
@@ -308,100 +371,8 @@ on SCORE-DATA-ALIST"
     (goto-char (point-min))
     (while (re-search-forward "\\s-\\s-+" nil t)
       (replace-match "   ")))
-  buffer)
-    
+  buffer))
 
-
-;;; this is the old routine which gets obsoleted by
-;;; the implementation of Hynek's Great Idea(TM) ;)
-(defun emeteo-parse (buffer)
-  "Returns a metar information alist of the form
-  \( metkey . value ).
-
-Currently there are the following metkeys available:
-- temp"
-  (with-current-buffer buffer
-    (let* (
-;;           (uhrzeit (progn
-;;                      (goto-char (point-min))
-;;                      (and (re-search-forward "\\([0-9][0-9]:[0-9][0-9].Uhr\\)" nil t)
-;;                           (match-string 1))))
-;;            (allg (progn
-;;                   (goto-char (point-min))
-;;                   (and (re-search-forward "Ortszeit \\(.+\\) Temp" nil t)
-;;                        (match-string 1))))
-           (temp (progn
-                   (goto-char (point-min))
-                   (and (or (save-excursion
-                              (re-search-forward "temp\\(?:.\\|erature?\\)?:?\\s-+\\([0-9.,]+\\s-*\\(?:&deg;\\|°\\)\\(?:C\\|F\\)\\)" nil t))
-                            (save-excursion
-                              (re-search-forward "current \\(?:weather\\|condition\\).+?\\s-+\\([0-9.,]+\\s-*\\(?:&deg;\\|°\\)?\\(?:C\\|F\\)\\)" nil t)))
-                        (match-string 1))))
-           (press (progn
-                    (goto-char (point-min))
-                    (and (re-search-forward "\\(?:\\(?:luft\\)?druck\\|\\(?:air ?\\)?press\\(?:ure\\)?\\):?\\s-\\(.+?\\(?:[hk]?Pa\\|m?bar\\|inche?s?\\)\\)" nil t)
-                         (match-string 1))))
-           (windd (progn
-                    (goto-char (point-min))
-                    (and (re-search-forward "wind\\(?:\\s-?rich[.t]?\\(?:\\.\\|ung\\)?\\|dir\\(?:ection\\)?\\):?\\s-+\\(\\S-+\\)\\s-" nil t)
-                         (match-string 1))))
-           (winds (progn
-                    (goto-char (point-min))
-                    (and (re-search-forward "wind\\(?:st.?\\(?:\\(?:&auml;\\|ä\\)rke\\)?\\|geschw?.?\\(?:indigkeit\\)?\\| ?sp\\(?:eed\\)?.?\\|\\s-?vel\\(?:ocity\\)?\\):?\\s-\\(.+?\\(?:Bft\\|km/?h\\|m/?s\\|kn\\|mph\\|mls\\)\\)" nil t)
-                         (match-string 1))))
-           (hydr (progn
-                   (goto-char (point-min))
-                   (and (re-search-forward "\\(?:luftfeuchte\\|humidity\\):?\\s-\\(.+?%\\)" nil t)
-                        (match-string 1))))
-           (licht (progn
-                    (goto-char (point-min))
-                    (and (re-search-forward "lichtst\\(?:ä\\|&auml;\\)rke:?\\s-\\(.+?lux\\)" nil t)
-                         (match-string 1))))
-           (sicht (progn
-                    (goto-char (point-min))
-                    (and (re-search-forward "sicht:\\s-\\(.+?m\\)" nil t)
-                         (match-string 1))))
-           (temp (and temp
-                      (or (replace-regexp-in-string " " "" temp nil t) temp)))
-           (temp (and temp
-                      (or (replace-regexp-in-string "&deg;" "°" temp nil t) temp)))
-           (press (and press
-                       (or (replace-regexp-in-string " " "" press nil t) press)))
-           (windd (and windd
-                       (or (replace-regexp-in-string " " "" windd nil t) windd)))
-           (winds (and winds
-                       (or (replace-regexp-in-string " " "" winds nil t) winds)))
-           (hydr (and hydr
-                      (or (replace-regexp-in-string " " "" hydr nil t) hydr)))
-           (licht (and licht
-                       (or (replace-regexp-in-string " " "" licht nil t) licht)))
-           (sicht (and sicht
-                       (or (replace-regexp-in-string " " "" sicht nil t) sicht)))
-           (metalist nil))
-      (and temp
-           ;;(emeteo-valid-temp-p temp)
-           (add-to-list 'metalist `(temp ,(concat temp)) t))
-      (and hydr
-           ;;(emeteo-valid-temp-p temp)
-           (add-to-list 'metalist `(hydr ,(concat hydr)) t))
-      (and press
-           ;;(emeteo-valid-temp-p press)
-           (add-to-list 'metalist `(press ,(concat press)) t))
-      (and windd
-           ;;(emeteo-valid-temp-p press)
-           (add-to-list 'metalist `(windd ,(concat windd)) t))
-      (and winds
-           ;;(emeteo-valid-temp-p press)
-           (add-to-list 'metalist `(winds ,(concat winds)) t))
-      (and licht
-           ;;(emeteo-valid-temp-p press)
-           (add-to-list 'metalist `(licht ,(concat licht)) t))
-      (and sicht
-           ;;(emeteo-valid-temp-p press)
-           (add-to-list 'metalist `(sicht ,(concat sicht)) t))
-      metalist)))
-;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
-;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
 
 
 (defun emeteo-valid-temp-p (temp)

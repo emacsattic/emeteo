@@ -50,7 +50,7 @@ displaying as announcement for a particular spec."
   :group 'emeteo-modeline
   :type 'sexp)
 
-(defcustom emeteo-modeline-default-format '("%s:%s%s" :shortname temp :unit-string)
+(defcustom emeteo-modeline-default-format '("%s:%s%sw%s%s" :shortname temp :temp-unit-string wind :wind-unit-string)
   "Defines how modeline entries look.
 This list consists of a format string in the car and arbitrary result
 keys or keywords from the data-sources in the cdr."
@@ -63,6 +63,9 @@ announce that fetching has failed."
   :group 'emeteo-modeline
   :type 'string)
 
+(defcustom emeteo-modeline-eyecandy-p t
+  ""
+  :group 'emeteo-modeline)
 
 (defvar emeteo-modeline-timer nil)
 (defvar emeteo-modeline-string nil)
@@ -112,17 +115,18 @@ Updates automatically every minute."
   (let* ((metinfo (emeteo-fetch-all)))
     (setq
      emeteo-modeline-string
-     (concat
-      " "
-      (mapconcat
-       (lambda (metspec)
-         (let* ((result metspec)
-                (spec (car-safe metspec))
-                (fullspec (assoc spec emeteo-data-sources)))
-           (emeteo-utils-format fullspec result
-                                emeteo-modeline-default-format
-                                emeteo-modeline-default-fail-indicator-string)))
-       metinfo " ")))
+     (mapcar
+      (lambda (metspec)
+        (let* ((result metspec)
+               (spec (car-safe metspec))
+               (fullspec (assoc spec emeteo-data-sources)))
+          (list " "
+                (emeteo-utils-format fullspec result
+                                     emeteo-modeline-default-format
+                                     emeteo-modeline-default-fail-indicator-string)
+                (and emeteo-modeline-eyecandy-p
+                     (emeteo-eyecandy-generate-modeline-extent 'storm)))))
+      metinfo))
     ;; This is inside the let binding, but we are not going to document
     ;; what variables are available.
     (run-hooks 'emeteo-modeline-hook)
@@ -130,6 +134,7 @@ Updates automatically every minute."
     ;; Do redisplay right now, if no input pending.
     (sit-for 0)))
 ;;(emeteo-modeline-function)
+
 
 (provide 'emeteo-modeline)
 
