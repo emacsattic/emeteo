@@ -36,6 +36,7 @@
 
 (require 'timer)
 (require 'emeteo)
+(require 'emeteo-utils)
 
 
 (defgroup emeteo-gnus nil
@@ -50,7 +51,7 @@ displaying as place in the headers."
   :type 'sexp)
 
 (defcustom emeteo-gnus-default-fail-indicator-string '"n/a"
-  "String used as an indicator in the modeline to
+  "String used as an indicator in the header to
 announce that fetching has failed."
   :group 'emeteo-gnus
   :type 'string)
@@ -71,24 +72,9 @@ keys or keywords from the data-sources in the cdr."
   (let* ((result (emeteo-fetch spec))
          (format (or header-format
                      emeteo-gnus-default-header-format))
-         (formatstr (car format))
-         (format (cdr-safe format))
-         (fullspec (assoc spec emeteo-data-sources))
-         (raw-header 
-          (and result
-               (mapcar (lambda (keyw-or-res)
-                         (cond ((keywordp keyw-or-res)
-                                (or (emeteo-utils-find-key-val keyw-or-res fullspec)
-                                    " "))
-                               ((symbolp keyw-or-res)
-                                (cdr-safe (assoc keyw-or-res result)))
-                               ((stringp keyw-or-res)
-                                keyw-or-res)
-                               (t nil)))
-                       format))))
-    (or (and raw-header
-             (eval (cons 'format
-                         (cons formatstr raw-header))))
+         (fullspec (assoc spec emeteo-data-sources)))
+    (or (and result
+             (emeteo-utils-format fullspec result format emeteo-gnus-default-fail-indicator-string))
         emeteo-gnus-default-fail-indicator-string)))
 ;;(emeteo-gnus-generate-header 'berlin)
 

@@ -50,6 +50,13 @@ displaying as announcement for a particular spec."
   :group 'emeteo-modeline
   :type 'sexp)
 
+(defcustom emeteo-modeline-default-format '("%s:%s%s" :shortname temp :unit-string)
+  "Defines how modeline entries look.
+This list consists of a format string in the car and arbitrary result
+keys or keywords from the data-sources in the cdr."
+  :group 'emeteo-modeline)
+
+
 (defcustom emeteo-modeline-default-fail-indicator-string '"n/a"
   "String used as an indicator in the modeline to
 announce that fetching has failed."
@@ -63,7 +70,7 @@ announce that fetching has failed."
 
 
 ;;;###autoload
-(defun emeteo ()
+(defun emeteo-modeline ()
   "Display current weather information in mode line of each buffer.
 Updates automatically every minute."
   (interactive)
@@ -83,7 +90,7 @@ Updates automatically every minute."
   ;; ... and start a timer to do it automatically thereafter.
   (setq emeteo-modeline-timer
         (run-at-time emeteo-modeline-interval emeteo-modeline-interval 'emeteo-modeline-function)))
-
+(defalias 'emeteo 'emeteo-modeline)
 
 (defun emeteo-stop ()
   (interactive)
@@ -109,17 +116,12 @@ Updates automatically every minute."
       " "
       (mapconcat
        (lambda (metspec)
-         (let* ((temp (cdr-safe (assoc 'temp (cdr-safe metspec))))
-                (specname (car-safe metspec))
-                (spec (assoc specname emeteo-data-sources))
-                (shortname (emeteo-utils-find-key-val
-                            (or emeteo-modeline-default-specname-keyword ':shortname) spec))
-                (failindicator (or emeteo-modeline-default-fail-indicator-string "n/a")))
-           (concat shortname
-                   ":"
-                   (or (car-safe temp)
-                       temp
-                       failindicator))))
+         (let* ((result metspec)
+                (spec (car-safe metspec))
+                (fullspec (assoc spec emeteo-data-sources)))
+           (emeteo-utils-format fullspec result
+                                emeteo-modeline-default-format
+                                emeteo-modeline-default-fail-indicator-string)))
        metinfo " ")))
     ;; This is inside the let binding, but we are not going to document
     ;; what variables are available.

@@ -113,6 +113,8 @@ in each hook that modifies data to a more suitable output."
   :group 'emeteo)
 
 
+
+
 (defcustom emeteo-decision-functions-alist
   '(
     (temp . emeteo-decide-min-score)
@@ -163,9 +165,9 @@ THIS NEEDS TO BE MORE ABSTRACTED."
 ;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
 ;; (emeteo-frob-uri "http://weather.yahoo.com/forecast/GMXX0007.html")
 
-(defun emeteo-valuate-temperature (parse-data)
+(defun emeteo-valuate-temperature (parse-data &optional temperature-format)
   "Valuates a list of given temperatures.
-This defun currently gives position in list as score. :o"
+This defun currently gives position in list as score. :o."
   (let* ((temp-data (cdr parse-data))
          (init-score 0))
     (cons 'temp
@@ -173,7 +175,6 @@ This defun currently gives position in list as score. :o"
                     (cons (incf init-score)
                           (format "%s"
                                   (emeteo-utils-find-key-val ':temp dat)
-                                  ;;(emeteo-utils-find-key-val ':unit dat)
                                   )))
                   temp-data))))
 ;;(emeteo-frob-uri "http://www.math.tu-berlin.de/~freundt/emeteo-test.html")

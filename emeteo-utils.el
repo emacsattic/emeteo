@@ -111,6 +111,38 @@ should be the param given to the function before the last."
   (nth (random (length list)) list))
 ;;(emeteo-utils-random-choose '(beer wine wodka whisky))
 
+
+
+
+;;; Formatting and markup funs
+(defvar emeteo-default-fail-indicator-string "n/a"
+  "String used as a generic indicator to announce
+that fetching has failed.")
+(defun emeteo-utils-format (fullspec result format &optional fail-indicator-string)
+  "This is the main formatting fun."
+  (let* ((fail-indicator-string (or fail-indicator-string
+                                    emeteo-default-fail-indicator-string))
+         (formatstr (car format))
+         (format (cdr-safe format))
+         (raw
+          (mapcar (lambda (keyw-or-res)
+                    (cond ((keywordp keyw-or-res)
+                           (or (emeteo-utils-find-key-val keyw-or-res fullspec)
+                               " "))
+                          ((symbolp keyw-or-res)
+                           (cdr-safe (assoc keyw-or-res result)))
+                          ((stringp keyw-or-res)
+                           keyw-or-res)
+                          (t nil)))
+                  format)))
+    (or (and raw
+             (eval (cons 'format
+                         (cons formatstr raw))))
+        fail-indicator-string)))
+;;(emeteo-utils-format (assoc 'berlin emeteo-data-sources) (emeteo-fetch 'berlin) '("%s:%s%s" :shortname temp :unit-string))
+
+
+
 (provide 'emeteo-utils)
 
 ;;; emeteo-utils.el ends here
