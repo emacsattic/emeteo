@@ -88,7 +88,7 @@ Updates automatically every minute."
 
 
 (defun emeteo-modeline-function ()
-  (let* ((metinfo (emeteo-froball)))
+  (let* ((metinfo (emeteo-fetch-all)))
     (setq emeteo-modeline-string
           (concat " "
                   (mapconcat (lambda (metspec)

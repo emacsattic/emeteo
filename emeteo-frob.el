@@ -33,24 +33,6 @@
 
 ;;; Code:
 
-(defun emeteo-froball ()
-  (let* ((debug-buf (and emeteo-debug-p
-                         (get-buffer-create "*emeteo debug*"))))
-    (and emeteo-debug-p
-         (erase-buffer debug-buf))
-    (mapcar 'emeteo-frob (mapcar 'car emeteo-url-alist))))
-;;(emeteo-froball)
-
-
-(defun emeteo-frob (&optional emeteo-spec)
-  "Fetches metar information in the region `emeteo-spec'"
-  (let* ((uri (or (car (cdr-safe (assoc emeteo-spec emeteo-url-alist)))))
-         (debug-buf (and emeteo-debug-p
-                         (get-buffer-create "*emeteo debug*"))))
-    (and uri
-         (cons emeteo-spec (emeteo-frob-uri uri)))))
-;;(emeteo-frob "B")
-
 
 (defun emeteo-frob-split-uri (uri)
   "Splits URI `uri' to a list (hostname protocol filename)."
@@ -97,25 +79,10 @@
     (with-current-buffer buf
       (goto-char (point-min))
       (if (looking-at "^HTTP/...\\s-+200\\s-OK$")
-          (progn
-            (emeteo-wash (current-buffer))
-
-            ;; debugging stuff
-            (and emeteo-debug-p
-                 (insert-string (buffer-string) debug-buf))
-           
-            ;;; AAAAAAAAARGH, this is no good, why should a frobber parse the data it frobs??
-            ;;; get a hook and an abstract wrapper here
-            (let* ((raw-parse-data (emeteo-parse-buffer (current-buffer)))
-                   (val-parse-data (emeteo-valuate-data raw-parse-data))
-                   (dec-parse-data (emeteo-decide-data val-parse-data)))
-              dec-parse-data))
-        nil))))
+          buf))))
 ;; (emeteo-frob-uri "http://www.met.fu-berlin.de/de/wetter/")
 
-;;(emeteo-froball)
-;;(assoc 'temp (emeteo-parse "*emeteo*"))
-;;(defun w3-write-explicit-encodings nil)
+
 
 (provide 'emeteo-frob)
 

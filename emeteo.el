@@ -102,6 +102,51 @@ It is a list of the form:
   (setq emeteo-insinuated t))
 
 
+;;; fetching
+
+(defun emeteo-fetch-all (&optional specs-list)
+  (let* ((debug-buf (and emeteo-debug-p
+                         (get-buffer-create "*emeteo debug*")))
+         (specs-list (or specs-list
+                         emeteo-url-alist)))
+    (and emeteo-debug-p
+         (erase-buffer debug-buf))
+    (mapcar 'emeteo-fetch (mapcar 'car specs-list))))
+;;(emeteo-froball)
+
+
+(defun emeteo-fetch (&optional emeteo-spec specs-list)
+  "Fetches metar information in the region `emeteo-spec'"
+  (let* ((specs-list (or specs-list
+                         emeteo-url-alist))
+         (uri (or (car (cdr-safe (assoc emeteo-spec specs-list)))))
+         (debug-buf (and emeteo-debug-p
+                         (get-buffer-create "*emeteo debug*"))))
+    (and uri
+         (cons emeteo-spec (emeteo-fetch-uri uri)))))
+;;(emeteo-fetch "B")
+
+(defun emeteo-fetch-uri (uri)
+  "Fetching is like:
+- frobbing
+- washing
+- parsing
+- valuating
+- deciding"
+  (let* ((frob-buf (emeteo-frob-uri uri)))
+    (and frob-buf
+         (with-current-buffer frob-buf
+           (emeteo-wash (current-buffer))
+           (and emeteo-debug-p
+                (insert-string (buffer-string) debug-buf))
+           (let* ((raw-parse-data (emeteo-parse-buffer (current-buffer)))
+                  (val-parse-data (emeteo-valuate-data raw-parse-data))
+                  (dec-parse-data (emeteo-decide-data val-parse-data)))
+             dec-parse-data)))))
+;; (emeteo-fetch-uri "http://www.met.fu-berlin.de/de/wetter/")
+
+
+
 (provide 'emeteo)
 
 ;;; emeteo.el ends here
